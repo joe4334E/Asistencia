@@ -1,0 +1,48 @@
+# =====================================================================
+# Sistema de Asistencia QR - UNITEPC
+#
+# 1. Todo el trafico entra por public/, que es la unica carpeta que debe
+#    ser visible desde el navegador.
+# 2. Ademas se BLOQUEA explicitamente el acceso a las carpetas internas.
+#    Esto ultimo es importante: la redireccion a public/ solo funciona si
+#    el servidor tiene mod_rewrite activo. Sin el, un archivo como
+#    database/database.sql se serviria como texto plano y quedaria a la
+#    vista el esquema completo y los hashes de las contraseñas.
+# =====================================================================
+
+# --- Bloqueo directo de las carpetas internas ---
+RedirectMatch 404 ^/.*/(config|controllers|models|views|database|storage|libs|docs|certificado)/
+RedirectMatch 404 ^/(config|controllers|models|views|database|storage|libs|docs|certificado)/
+
+# --- Archivos que nunca deben descargarse ---
+<FilesMatch "\.(sql|log|md|json|lock|ini|bak|old|yml|yaml)$">
+    Require all denied
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# --- No listar el contenido de las carpetas ---
+Options -Indexes
+
+# --- Ocultar la version del servidor en las cabeceras ---
+<IfModule mod_headers.c>
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+</IfModule>
+
+# El index.php de la raiz es el front controller. cualquier ruta que no sea
+# un archivo o carpeta real (/admin, /docente, /api/...) se entrega a el.
+# Así funciona en cPanel sin cambiar el Document Root.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Si el proveedor no tiene mod_rewrite, mod_dir hace lo mismo.
+<IfModule !mod_rewrite.c>
+    FallbackResource /index.php
+</IfModule>
